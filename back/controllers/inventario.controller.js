@@ -12,11 +12,11 @@ function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try
 function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
 var createInventario = /*#__PURE__*/function () {
   var _ref = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee(req, res) {
-    var _req$body, code, product, stock, precio, fecha, salida, newInventario, inventarioSaved;
+    var _req$body, code, product, stock, precio, fecha, salida, nota, newInventario, inventarioSaved;
     return _regeneratorRuntime().wrap(function _callee$(_context) {
       while (1) switch (_context.prev = _context.next) {
         case 0:
-          _req$body = req.body, code = _req$body.code, product = _req$body.product, stock = _req$body.stock, precio = _req$body.precio, fecha = _req$body.fecha, salida = _req$body.salida;
+          _req$body = req.body, code = _req$body.code, product = _req$body.product, stock = _req$body.stock, precio = _req$body.precio, fecha = _req$body.fecha, salida = _req$body.salida, nota = _req$body.nota;
           _context.prev = 1;
           newInventario = new _Inventario["default"]({
             code: code,
@@ -24,7 +24,8 @@ var createInventario = /*#__PURE__*/function () {
             stock: stock - salida,
             precio: precio,
             fecha: fecha,
-            salida: salida
+            salida: salida,
+            nota: nota
           });
           _context.next = 5;
           return newInventario.save();
@@ -48,7 +49,7 @@ var createInventario = /*#__PURE__*/function () {
 exports.createInventario = createInventario;
 var updateInventarioById = /*#__PURE__*/function () {
   var _ref2 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee2(req, res) {
-    var findOldInventario, cuadreSalida, updatebody, updateInventario;
+    var findOldInventario, updatebody, updateInventario, stock, operation, difference;
     return _regeneratorRuntime().wrap(function _callee2$(_context2) {
       while (1) switch (_context2.prev = _context2.next) {
         case 0:
@@ -59,34 +60,51 @@ var updateInventarioById = /*#__PURE__*/function () {
           });
         case 3:
           findOldInventario = _context2.sent;
-          cuadreSalida = findOldInventario.salida + findOldInventario.stock;
+          updatebody = {};
+          operation = Number(findOldInventario.stock) != req.body.stock && Number(findOldInventario.salida) != req.body.salida || Number(findOldInventario.salida) != req.body.salida && Number(findOldInventario.stock) === req.body.stock;
+          if (operation) {
+            if (Number(findOldInventario.salida) != req.body.salida) {
+              difference = Math.abs(findOldInventario.salida - req.body.salida);
+              if (findOldInventario.salida < req.body.salida) {
+                stock = req.body.stock - difference;
+              } else {
+                stock = req.body.stock + difference;
+              }
+            } else {
+              if (req.body.salida > 0) {
+                stock = req.body.stock - req.body.salida;
+              } else {
+                stock = req.body.stock + req.body.salida;
+              }
+            }
+          } else if (Number(findOldInventario.stock) != req.body.stock && Number(findOldInventario.salida) === req.body.salida) {
+            stock = req.body.stock;
+          }
           updatebody = {
+            stock: stock,
             code: req.body.code,
             product: req.body.product,
-            stock: cuadreSalida - req.body.salida,
             precio: req.body.precio,
             fecha: req.body.fecha,
-            salida: req.body.salida
+            salida: req.body.salida,
+            nota: req.body.nota
           };
-          console.log(updatebody);
-          _context2.next = 9;
+          _context2.next = 10;
           return _Inventario["default"].findByIdAndUpdate(req.params.inventarioId, updatebody, {
             "new": true
           });
-        case 9:
+        case 10:
           updateInventario = _context2.sent;
-          res.status(200).json(updateInventario);
-          _context2.next = 16;
-          break;
-        case 13:
-          _context2.prev = 13;
+          return _context2.abrupt("return", res.status(200).json(updateInventario));
+        case 14:
+          _context2.prev = 14;
           _context2.t0 = _context2["catch"](0);
           res.status(500).json(_context2.t0);
-        case 16:
+        case 17:
         case "end":
           return _context2.stop();
       }
-    }, _callee2, null, [[0, 13]]);
+    }, _callee2, null, [[0, 14]]);
   }));
   return function updateInventarioById(_x3, _x4) {
     return _ref2.apply(this, arguments);
@@ -109,14 +127,14 @@ var deleteInventarioById = /*#__PURE__*/function () {
             _context3.next = 9;
             break;
           }
-          res.json('No se ha encontrado el producto del inventario');
+          res.json("No se ha encontrado el producto del inventario");
           _context3.next = 12;
           break;
         case 9:
           _context3.next = 11;
           return _Inventario["default"].findByIdAndDelete(inventarioId);
         case 11:
-          res.status(200).json('El producto del inventario fue eliminando correctamente!');
+          res.status(200).json("El producto del inventario fue eliminando correctamente!");
         case 12:
           _context3.next = 17;
           break;
@@ -166,20 +184,20 @@ var getInventarios = /*#__PURE__*/function () {
 exports.getInventarios = getInventarios;
 var getInventarioPaginations = /*#__PURE__*/function () {
   var _ref5 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee5(req, res) {
-    var queryLimit, querySkip, inventarios, count;
+    var count, queryLimit, querySkip, inventarios;
     return _regeneratorRuntime().wrap(function _callee5$(_context5) {
       while (1) switch (_context5.prev = _context5.next) {
         case 0:
           _context5.prev = 0;
-          queryLimit = Number(req.query.limit) || 20, querySkip = Number(req.query.skip) || 0;
-          _context5.next = 4;
-          return _Inventario["default"].find().skip(querySkip).limit(queryLimit);
-        case 4:
-          inventarios = _context5.sent;
-          _context5.next = 7;
+          _context5.next = 3;
           return _Inventario["default"].count();
-        case 7:
+        case 3:
           count = _context5.sent;
+          queryLimit = Number(req.query.limit) || 10, querySkip = Number(req.query.skip) || 0;
+          _context5.next = 7;
+          return _Inventario["default"].find().skip(querySkip).limit(queryLimit);
+        case 7:
+          inventarios = _context5.sent;
           return _context5.abrupt("return", res.status(200).json({
             content: inventarios,
             total: count
@@ -201,51 +219,69 @@ var getInventarioPaginations = /*#__PURE__*/function () {
 exports.getInventarioPaginations = getInventarioPaginations;
 var getSearchInventario = /*#__PURE__*/function () {
   var _ref6 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee6(req, res) {
-    var queryLimit, querySkip, search, inventarioSearch, count;
+    var queryLimit, querySkip, search, inventarioSearch, inventarioCount, count;
     return _regeneratorRuntime().wrap(function _callee6$(_context6) {
       while (1) switch (_context6.prev = _context6.next) {
         case 0:
           _context6.prev = 0;
-          queryLimit = Number(req.query.limit) || 20, querySkip = Number(req.query.skip) || 0;
+          queryLimit = Number(req.query.limit) || 10, querySkip = Number(req.query.skip) || 0;
           search = req.params.search;
           _context6.next = 5;
           return _Inventario["default"].find({
             $or: [{
               code: {
-                $regex: '.*' + search + '.*',
-                $options: 'i'
+                $regex: ".*" + search + ".*",
+                $options: "i"
               }
             }, {
               product: {
-                $regex: '.*' + search + '.*',
-                $options: 'i'
+                $regex: ".*" + search + ".*",
+                $options: "i"
               }
             }, {
               fecha: {
                 $regex: search,
-                $options: 'i'
+                $options: "i"
               }
             }]
           }).skip(querySkip).limit(queryLimit);
         case 5:
           inventarioSearch = _context6.sent;
           _context6.next = 8;
-          return _Inventario["default"].count();
+          return _Inventario["default"].find({
+            $or: [{
+              code: {
+                $regex: ".*" + search + ".*",
+                $options: "i"
+              }
+            }, {
+              product: {
+                $regex: ".*" + search + ".*",
+                $options: "i"
+              }
+            }, {
+              fecha: {
+                $regex: search,
+                $options: "i"
+              }
+            }]
+          });
         case 8:
-          count = _context6.sent;
+          inventarioCount = _context6.sent;
+          count = inventarioCount.length;
           return _context6.abrupt("return", res.status(200).json({
             content: inventarioSearch,
             total: count
           }));
-        case 12:
-          _context6.prev = 12;
+        case 13:
+          _context6.prev = 13;
           _context6.t0 = _context6["catch"](0);
           return _context6.abrupt("return", res.status(500).send(_context6.t0));
-        case 15:
+        case 16:
         case "end":
           return _context6.stop();
       }
-    }, _callee6, null, [[0, 12]]);
+    }, _callee6, null, [[0, 13]]);
   }));
   return function getSearchInventario(_x11, _x12) {
     return _ref6.apply(this, arguments);

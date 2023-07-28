@@ -4,7 +4,7 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
 Object.defineProperty(exports, "__esModule", {
   value: true
 });
-exports.updateEntradaById = exports.getSearchEntrada = exports.getEntradas = exports.getEntradaPaginations = exports.deleteEntradaById = exports.createEntrada = void 0;
+exports.updateEntradaById = exports.getSearchEntrada = exports.getSearchConsultaInventario = exports.getEntradas = exports.getEntradaPaginations = exports.deleteEntradaById = exports.createEntrada = void 0;
 var _Entrada = _interopRequireDefault(require("../models/Entrada"));
 var _Inventario = _interopRequireDefault(require("../models/Inventario"));
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { "default": obj }; }
@@ -23,7 +23,7 @@ var createEntrada = /*#__PURE__*/function () {
           return _Inventario["default"].findOne({
             code: {
               $regex: code,
-              $options: 'i'
+              $options: "i"
             }
           });
         case 4:
@@ -60,7 +60,7 @@ var createEntrada = /*#__PURE__*/function () {
           _context.next = 18;
           break;
         case 17:
-          res.status(404).json('El producto no se encontro porfavor verifique el inventario');
+          res.status(404).json("El producto no se encontro porfavor verifique el inventario");
         case 18:
           _context.next = 23;
           break;
@@ -81,65 +81,69 @@ var createEntrada = /*#__PURE__*/function () {
 exports.createEntrada = createEntrada;
 var updateEntradaById = /*#__PURE__*/function () {
   var _ref2 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee2(req, res) {
-    var entrada, updateEntrada, foundInventary, inventary, updateFoundEntrada;
+    var updatebody, entrada, foundInventary, inventary, updateFoundEntrada, updateEntrada;
     return _regeneratorRuntime().wrap(function _callee2$(_context2) {
       while (1) switch (_context2.prev = _context2.next) {
         case 0:
           _context2.prev = 0;
-          _context2.next = 3;
+          updatebody = {};
+          _context2.next = 4;
           return _Entrada["default"].findOne({
-            code: {
-              $regex: req.body.code,
-              $options: 'i'
-            }
+            _id: req.params.entradaId
           });
-        case 3:
+        case 4:
           entrada = _context2.sent;
-          _context2.next = 6;
-          return _Entrada["default"].findByIdAndUpdate(req.params.entradaId, req.body, {
-            "new": true
-          });
-        case 6:
-          updateEntrada = _context2.sent;
-          if (!(req.body.entrada != entrada)) {
-            _context2.next = 15;
+          if (!(req.body.quantity != entrada.quantity)) {
+            _context2.next = 13;
             break;
           }
-          _context2.next = 10;
+          _context2.next = 8;
           return _Inventario["default"].findOne({
             code: req.body.code
           });
-        case 10:
+        case 8:
           foundInventary = _context2.sent;
           inventary = {
             code: foundInventary.code,
             product: foundInventary.product,
             entrada: foundInventary.entrada,
             salida: foundInventary.salida,
-            stock: foundInventary.stock + entrada.quantity,
+            stock: req.body.quantity,
             precio: foundInventary.precio
           };
-          _context2.next = 14;
+          _context2.next = 12;
           return _Inventario["default"].updateOne({
             _id: foundInventary._id
           }, {
             $set: inventary
           });
-        case 14:
+        case 12:
           updateFoundEntrada = _context2.sent;
-        case 15:
+        case 13:
+          updatebody = {
+            code: req.body.code,
+            product: req.body.product,
+            quantity: req.body.quantity,
+            creado: req.body.creado
+          };
+          console.log(updateEntrada, req.body);
+          _context2.next = 17;
+          return _Entrada["default"].findByIdAndUpdate(req.params.entradaId, req.body);
+        case 17:
+          updateEntrada = _context2.sent;
+          console.log(updateEntrada);
           res.status(200).json(updateEntrada);
-          _context2.next = 21;
+          _context2.next = 25;
           break;
-        case 18:
-          _context2.prev = 18;
+        case 22:
+          _context2.prev = 22;
           _context2.t0 = _context2["catch"](0);
           return _context2.abrupt("return", res.status(500).json(_context2.t0));
-        case 21:
+        case 25:
         case "end":
           return _context2.stop();
       }
-    }, _callee2, null, [[0, 18]]);
+    }, _callee2, null, [[0, 22]]);
   }));
   return function updateEntradaById(_x3, _x4) {
     return _ref2.apply(this, arguments);
@@ -148,7 +152,7 @@ var updateEntradaById = /*#__PURE__*/function () {
 exports.updateEntradaById = updateEntradaById;
 var deleteEntradaById = /*#__PURE__*/function () {
   var _ref3 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee3(req, res) {
-    var entradaId, validacion;
+    var entradaId, validacion, findInventary, inventary, updateFoundInventary, response;
     return _regeneratorRuntime().wrap(function _callee3$(_context3) {
       while (1) switch (_context3.prev = _context3.next) {
         case 0:
@@ -163,25 +167,51 @@ var deleteEntradaById = /*#__PURE__*/function () {
             break;
           }
           res.json("No se ha encontrado el producto a eliminar");
-          _context3.next = 12;
+          _context3.next = 20;
           break;
         case 9:
           _context3.next = 11;
-          return _Entrada["default"].findByIdAndDelete(entradaId);
+          return _Inventario["default"].findOne({
+            code: {
+              $regex: validacion.code,
+              $options: "i"
+            }
+          });
         case 11:
-          res.status(200).json("Entrada borrada correctamente!");
-        case 12:
-          _context3.next = 17;
+          findInventary = _context3.sent;
+          inventary = {
+            code: findInventary.code,
+            product: findInventary.product,
+            stock: findInventary.stock - validacion.quantity,
+            precio: findInventary.precio,
+            fecha: findInventary.fecha,
+            salida: findInventary.salida
+          };
+          _context3.next = 15;
+          return _Inventario["default"].updateOne({
+            _id: findInventary._id
+          }, {
+            $set: inventary
+          });
+        case 15:
+          updateFoundInventary = _context3.sent;
+          _context3.next = 18;
+          return _Entrada["default"].findByIdAndDelete(entradaId);
+        case 18:
+          response = _context3.sent;
+          return _context3.abrupt("return", res.status(200).json("Entrada borrada correctamente!"));
+        case 20:
+          _context3.next = 25;
           break;
-        case 14:
-          _context3.prev = 14;
+        case 22:
+          _context3.prev = 22;
           _context3.t0 = _context3["catch"](0);
           return _context3.abrupt("return", res.status(500).json(_context3.t0));
-        case 17:
+        case 25:
         case "end":
           return _context3.stop();
       }
-    }, _callee3, null, [[0, 14]]);
+    }, _callee3, null, [[0, 22]]);
   }));
   return function deleteEntradaById(_x5, _x6) {
     return _ref3.apply(this, arguments);
@@ -252,56 +282,145 @@ var getEntradaPaginations = /*#__PURE__*/function () {
   };
 }();
 exports.getEntradaPaginations = getEntradaPaginations;
-var getSearchEntrada = /*#__PURE__*/function () {
+var getSearchConsultaInventario = /*#__PURE__*/function () {
   var _ref6 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee6(req, res) {
-    var queryLimit, querySkip, search, entradaSearch, count;
+    var queryLimit, querySkip, searchInventario, entradaSearch, entradaCount, count;
     return _regeneratorRuntime().wrap(function _callee6$(_context6) {
       while (1) switch (_context6.prev = _context6.next) {
         case 0:
           _context6.prev = 0;
-          queryLimit = Number(req.query.limit) || 20, querySkip = Number(req.query.skip) || 0;
-          search = req.params.search;
+          queryLimit = Number(req.query.limit) || 10, querySkip = Number(req.query.skip) || 0;
+          searchInventario = req.params.searchInventario;
           _context6.next = 5;
-          return _Entrada["default"].find({
+          return _Inventario["default"].find({
             $or: [{
               code: {
-                $regex: '.*' + search + '.*',
-                $options: 'i'
+                $regex: ".*" + searchInventario + ".*",
+                $options: "i"
               }
             }, {
               product: {
-                $regex: '.*' + search + '.*',
-                $options: 'i'
+                $regex: ".*" + searchInventario + ".*",
+                $options: "i"
               }
             }, {
               creado: {
-                $regex: search,
-                $options: 'i'
+                $regex: searchInventario,
+                $options: "i"
               }
             }]
           }).skip(querySkip).limit(queryLimit);
         case 5:
           entradaSearch = _context6.sent;
           _context6.next = 8;
-          return _Entrada["default"].count();
+          return _Inventario["default"].find({
+            $or: [{
+              code: {
+                $regex: ".*" + searchInventario + ".*",
+                $options: "i"
+              }
+            }, {
+              product: {
+                $regex: ".*" + searchInventario + ".*",
+                $options: "i"
+              }
+            }, {
+              creado: {
+                $regex: searchInventario,
+                $options: "i"
+              }
+            }]
+          });
         case 8:
-          count = _context6.sent;
+          entradaCount = _context6.sent;
+          count = entradaCount.length;
           return _context6.abrupt("return", res.status(200).json({
             content: entradaSearch,
             total: count
           }));
-        case 12:
-          _context6.prev = 12;
+        case 13:
+          _context6.prev = 13;
           _context6.t0 = _context6["catch"](0);
-          return _context6.abrupt("return", res.status(500).json(_context6.t0));
-        case 15:
+          return _context6.abrupt("return", res.status(500).send(_context6.t0));
+        case 16:
         case "end":
           return _context6.stop();
       }
-    }, _callee6, null, [[0, 12]]);
+    }, _callee6, null, [[0, 13]]);
   }));
-  return function getSearchEntrada(_x11, _x12) {
+  return function getSearchConsultaInventario(_x11, _x12) {
     return _ref6.apply(this, arguments);
+  };
+}();
+exports.getSearchConsultaInventario = getSearchConsultaInventario;
+var getSearchEntrada = /*#__PURE__*/function () {
+  var _ref7 = _asyncToGenerator( /*#__PURE__*/_regeneratorRuntime().mark(function _callee7(req, res) {
+    var queryLimit, querySkip, search, entradaSearch, entradaCount, count;
+    return _regeneratorRuntime().wrap(function _callee7$(_context7) {
+      while (1) switch (_context7.prev = _context7.next) {
+        case 0:
+          _context7.prev = 0;
+          queryLimit = Number(req.query.limit) || 10, querySkip = Number(req.query.skip) || 0;
+          search = req.params.search;
+          _context7.next = 5;
+          return _Entrada["default"].find({
+            $or: [{
+              code: {
+                $regex: ".*" + search + ".*",
+                $options: "i"
+              }
+            }, {
+              product: {
+                $regex: ".*" + search + ".*",
+                $options: "i"
+              }
+            }, {
+              creado: {
+                $regex: search,
+                $options: "i"
+              }
+            }]
+          }).skip(querySkip).limit(queryLimit);
+        case 5:
+          entradaSearch = _context7.sent;
+          _context7.next = 8;
+          return _Entrada["default"].find({
+            $or: [{
+              code: {
+                $regex: ".*" + search + ".*",
+                $options: "i"
+              }
+            }, {
+              product: {
+                $regex: ".*" + search + ".*",
+                $options: "i"
+              }
+            }, {
+              creado: {
+                $regex: search,
+                $options: "i"
+              }
+            }]
+          });
+        case 8:
+          entradaCount = _context7.sent;
+          count = entradaCount.length;
+          return _context7.abrupt("return", res.status(200).json({
+            content: entradaSearch,
+            total: count
+          }));
+        case 13:
+          _context7.prev = 13;
+          _context7.t0 = _context7["catch"](0);
+          return _context7.abrupt("return", res.status(500).json(_context7.t0));
+        case 16:
+        case "end":
+          return _context7.stop();
+      }
+    }, _callee7, null, [[0, 13]]);
+  }));
+  return function getSearchEntrada(_x13, _x14) {
+    return _ref7.apply(this, arguments);
   };
 }();
 exports.getSearchEntrada = getSearchEntrada;

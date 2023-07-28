@@ -33,11 +33,15 @@ import Fade from "@mui/material/Fade";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 
-import moment from 'moment';
+import moment from "moment";
+
+import Autocomplete from "@mui/material/Autocomplete";
 
 import SalidaServices from "../services/SalidaServices";
 import { useForm, Controller } from "react-hook-form";
 import InventarioServices from "../services/InventarioServices";
+import { ConfirmModal } from "./ConfirmModal";
+import { Codigo, Producto } from "../interfaces/Selects";
 
 interface Column {
   id: "code" | "product" | "quantity" | "creado";
@@ -70,9 +74,12 @@ const serviceInventario = new InventarioServices();
 
 export const Salida = () => {
   const [page, setPage] = useState(0);
+  const [pageSearch, setPageSearch] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPageSearch, setRowsPerPageSearch] = useState(5);
   const [infoRow, setInfoRow] = useState<any>();
   const [modal, setModal] = useState(false);
+  const [ShowConfirm, setShowConfirm] = useState(false);
 
   const [modalCreacion, setModalCreacion] = useState(false);
   const [modalUpdate, setModalUpdate] = useState(false);
@@ -83,25 +90,37 @@ export const Salida = () => {
   const [labelForInput, setLabelForInput] = useState<any>({});
 
   const [skip, setSkip] = useState(0);
+  const [skipSearch, setSkipSearch] = useState(0);
   const [salida, setSalida] = useState<any[]>([]);
   const [inventarioBusqueda, setInventarioBusqueda] = useState<any[]>([]);
   const [totalRegister, setTotalRegister] = useState<number>(0);
+  const [totalRegisterSearch, setTotalRegisterSearch] = useState<number>(0);
+  const [productSelect, setProductSelect] = useState<any[]>([]);
+  const [codeSelect, setCodeSelect] = useState<any[]>([]);
+  const [saveCodigo, setSaveCodigo] = useState<any>();
+  const [valorCodigo, setValorCodigo] = useState<any>();
+  const [saveProducto, setSaveProducto] = useState<any>();
+  const [valor, setValor] = useState<any>();
+  const [valorCantidad, setValorCantidad] = useState<any>();
+  const [valorFecha, setValorFecha] = useState<any>();
+  const [titulo, setTitulo] = useState<any>();
 
   const { register, control, handleSubmit, formState, getValues, setValue } =
     useForm({
       defaultValues: {
         Id: infoRow?._id || "",
-        Code: infoRow?.code || "",
-        Producto: infoRow?.product || "",
-        Cantidad: infoRow?.quantity || "",
+        Code: valorCodigo?.name || "",
+        Producto: valor?.name || "",
+        Cantidad: valorCantidad?.name || "",
         Fecha: infoRow?.creado || "",
       },
     });
 
   const navigate = useNavigate();
 
-  const handleChangePage = (event: unknown, newPage: number) => {
-    getInventarioForPageable(newPage * rowsPerPage);
+  const handleChangePage = async (event: unknown, newPage: number) => {
+    const salidas = await getInventarioForPageable(newPage * rowsPerPage);
+    setSalida(salidas);
     setPage(newPage);
   };
 
@@ -112,41 +131,77 @@ export const Salida = () => {
     setPage(0);
   };
 
+  const handleChangePageSearch = async (event: unknown, newPage: number) => {
+    setSkipSearch(newPage * rowsPerPageSearch);
+    const data: any = await service.getSearchConsultaInventario(
+      consulta.message,
+      newPage * rowsPerPageSearch,
+      rowsPerPageSearch
+    );
+    setInventarioBusqueda(data?.cotent);
+    setPageSearch(newPage);
+  };
+
+  const handleChangeRowsPerPageSearch = (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setRowsPerPageSearch(+event.target.value);
+    setPageSearch(0);
+  };
+
   const handleOpenModal = (modo?: any, info?: any) => {
     if (modo === "actualizacion") {
       setModalUpdate(true);
       setModalCreacion(false);
       setModal(true);
 
-      setValue("Code", info.code);
-      setValue("Producto", info.product);
-      setValue("Cantidad", info.quantity);
-      setValue("Fecha", moment(info.creado).format('yyyy-MM-DD'));
+      // setValue("Code", info.code);
+      // setValue("Producto", info.product);
+      setValor({ name: info.product });
+      setValorCodigo({ name: info.code });
+      setValorCantidad(info.quantity);
+      setValorFecha(moment(info.creado).format("yyyy-MM-DD"));
 
       setInfoRow(info);
+      setTitulo("Actualizar Venta");
     } else {
-      setModalCreacion(true);
-      setModalUpdate(false);
-      setModal(true);
+      if (modo === "creacionConsulta") {
+        setInfoRow(null);
+        setModalUpdate(false);
+        setModalCreacion(true);
+        setModal(true);
 
-      setValue("Code", "");
-      setValue("Producto", "");
-      setValue("Cantidad", "");
-      setValue("Fecha", "");
+        // setValue("Producto", info.product);
+        // setValue("Code", "");
+        setValor({ name: info.product });
+        setValorCodigo({ name: info.code });
+        setValorCantidad("");
+        setValorFecha("");
+        setTitulo("Crear Venta");
+      } else {
+        setModalCreacion(true);
+        setModalUpdate(false);
+        setModal(true);
+
+        setValor("");
+        setValorCodigo("");
+        setValorCantidad("");
+        setValorFecha("");
+        setTitulo("Crear Venta");
+      }
     }
   };
 
   const createSalida = async (data: any) => {
     try {
       const body: any = {
-        code: data.Code.toUpperCase(),
-        product: data.Producto.toUpperCase(),
-        quantity: data.Cantidad,
-        creado: data.Fecha,
+        code: valorCodigo.name.toUpperCase(),
+        product: valor.name.toUpperCase(),
+        quantity: valorCantidad,
+        creado: valorFecha,
       };
 
       const response = await service.createSalida(body);
-      console.log(response);
 
       setSalida([...salida, response]);
       setModal(false);
@@ -180,10 +235,10 @@ export const Salida = () => {
       const id = infoRow._id;
 
       const body = {
-        code: data.Code.toUpperCase(),
-        product: data.Producto.toUpperCase(),
-        quantity: Number(data.Cantidad),
-        creado: data.Fecha,
+        code: valorCodigo.name.toUpperCase(),
+        product: valor.name.toUpperCase(),
+        quantity: valorCantidad,
+        creado: valorFecha,
       };
 
       const response = await service.updateSalida(body, id);
@@ -216,7 +271,7 @@ export const Salida = () => {
     }
   };
 
-  const deleteSalida = async (data: any) => {
+  const deleteSalida = async () => {
     try {
       const id = infoRow._id;
 
@@ -247,6 +302,7 @@ export const Salida = () => {
         theme: "light",
       });
     }
+    setShowConfirm(false);
   };
 
   const SearchForSalidas = async () => {
@@ -255,7 +311,6 @@ export const Salida = () => {
       setSalida(response);
     } else {
       const response: any = await service.getSearchForSalida(busqueda.message);
-      console.log(response);
 
       setSalida(response.cotent);
     }
@@ -266,11 +321,46 @@ export const Salida = () => {
     if (consulta.message === "") {
       setInventarioBusqueda([]);
     } else {
-      const response: any = await serviceInventario.getSearchForInventario(
-        consulta.message
+      const response: any = await service.getSearchConsultaInventario(
+        consulta.message,
+        skipSearch,
+        rowsPerPageSearch
       );
-      setInventarioBusqueda(response.content);
-      setConsulta({ message: "" });
+      setInventarioBusqueda(response.cotent);
+      setTotalRegisterSearch(response.total);
+    }
+  };
+
+  const handleOnKeyPress = async (e: any) => {
+    if (e.key === "Enter") {
+      if (busqueda.message === "") {
+        const response: any = await getInventarioForPageable();
+        setSalida(response);
+        setBusqueda({ message: "" });
+      } else {
+        const response: any = await service.getSearchForSalida(
+          busqueda.message
+        );
+        setSalida(response.cotent);
+        setBusqueda({ message: "" });
+      }
+    }
+  };
+
+  const handleOnKeyPressSearch = async (e: any) => {
+    if (e.key === "Enter") {
+      if (consulta.message === "") {
+        setInventarioBusqueda([]);
+        setTotalRegisterSearch(0);
+      } else {
+        const response: any = await service.getSearchConsultaInventario(
+          consulta.message,
+          skipSearch,
+          rowsPerPageSearch
+        );
+        setInventarioBusqueda(response.cotent);
+        setTotalRegisterSearch(response.total);
+      }
     }
   };
 
@@ -286,6 +376,9 @@ export const Salida = () => {
 
   const handleCloseModal = () => {
     setModal(false);
+    setShowConfirm(false);
+    setValor("");
+    setValorCodigo("");
   };
 
   const handleCloseModalBusqueda = () => {
@@ -324,10 +417,7 @@ export const Salida = () => {
   };
 
   const getInventarioForPageable = async (offset?: number) => {
-    const data: any = await service.getSalidaPaginations(
-      offset ? offset : 0,
-      skip
-    );
+    const data: any = await service.getSalidaPaginations((offset = 0), skip);
 
     if (data?.total != undefined) {
       setTotalRegister(data?.total);
@@ -336,18 +426,33 @@ export const Salida = () => {
     return data?.content || [];
   };
 
+  const fillDataSelect = async () => {
+    const infoInventario: any = await serviceInventario.getAllInventario();
+
+    const dataProduct: Producto[] = [];
+    const dataCode: Codigo[] = [];
+
+    infoInventario.map((info: any) => {
+      dataProduct.push({ name: info.product });
+      dataCode.push({ name: info.code });
+    });
+
+    setProductSelect(dataProduct);
+    setCodeSelect(dataCode);
+  };
+
   const onDirectEntrada = () => {
     navigate("/entrada");
   };
 
   const onDirectInventario = () => {
     const rol: any = localStorage.getItem("user");
-    console.log(rol === "admin");
     navigate("/inventario");
   };
 
   useEffect(() => {
     configInitial();
+    fillDataSelect();
   }, []);
 
   const logOut = () => {
@@ -359,31 +464,6 @@ export const Salida = () => {
   return (
     <>
       <nav className="nav-bar">
-        <Paper
-          sx={{
-            p: "2px 4px",
-            display: "flex",
-            position: "relative",
-            width: 200,
-            height: 40,
-          }}
-        >
-          <InputBase
-            sx={{ ml: 1, flex: 1 }}
-            placeholder="Buscador"
-            onChange={handleOnChange}
-            value={busqueda.message}
-          />
-          <IconButton
-            type="button"
-            sx={{ p: "20px", left: 10 }}
-            aria-label="search"
-            onClick={SearchForSalidas}
-          >
-            <SearchIcon />
-          </IconButton>
-        </Paper>
-
         <div className="create-button" onClick={handleOpenModal}>
           <img src={CreateInventario} alt="" />
           <h2>Agregar</h2>
@@ -414,17 +494,45 @@ export const Salida = () => {
         </div>
       </nav>
 
-      <h3
-        style={{
-          fontSize: 40,
-          display: "flex",
-          justifyContent: "center",
-          color: "#22184c",
-          margin: "1em 0em 0em 0em",
-        }}
-      >
-        Registros de Ventas
-      </h3>
+      <div className="flex-title">
+        <Paper
+          sx={{
+            p: "2px 4px",
+            display: "flex",
+            position: "relative",
+            width: 400,
+            height: 40,
+          }}
+        >
+          <InputBase
+            sx={{ ml: 1, flex: 1 }}
+            placeholder="Ventas..."
+            onKeyDown={handleOnKeyPress}
+            onChange={handleOnChange}
+            value={busqueda.message}
+          />
+          <IconButton
+            type="button"
+            sx={{ p: "20px", left: 10 }}
+            aria-label="search"
+            onClick={SearchForSalidas}
+          >
+            <SearchIcon />
+          </IconButton>
+        </Paper>
+
+        {/* <h6
+          style={{
+            fontSize: 20,
+            display: "flex",
+            justifyContent: "center",
+            color: "#0036FF",
+            margin: ".5em 0em 0em 0em",
+          }}
+        >
+          Registros de Ventas
+        </h6> */}
+      </div>
 
       <Paper
         sx={{
@@ -444,7 +552,7 @@ export const Salida = () => {
                   align={"center"}
                   style={{
                     minWidth: 100,
-                    background: "#22184c",
+                    background: "#0036FF",
                     color: "#fff",
                     margin: "0 auto",
                     fontSize: 20,
@@ -458,39 +566,53 @@ export const Salida = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {salida
-              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((row, index) => {
-                return (
-                  <TableRow
-                    hover
-                    role="checkbox"
-                    tabIndex={-1}
-                    key={index}
-                    onClick={() => {
-                      handleOpenModal("actualizacion", row);
-                    }}
-                  >
-                    {columns.map((column) => {
-                      const value = row[column.id];
-                      
-                      if (column.id == "creado") {
-                        return (
-                          <TableCell key={column.id} align={"center"}>
-                            {moment(value).format("DD-MM-YYYY")}
-                          </TableCell>
-                        );
-                      }
+            {salida.map((row, index) => {
+              return (
+                <TableRow
+                  hover
+                  role="checkbox"
+                  tabIndex={-1}
+                  key={index}
+                  onClick={() => {
+                    handleOpenModal("actualizacion", row);
+                  }}
+                >
+                  {columns.map((column) => {
+                    const value = row[column.id];
 
+                    if (column.id == "creado") {
                       return (
-                        <TableCell key={column.id} align={"center"}>
-                          {value}
+                        <TableCell
+                          key={column.id}
+                          align={"center"}
+                          style={{
+                            fontSize: 16,
+                            fontWeight: "bold",
+                            fontFamily: "monospace",
+                          }}
+                        >
+                          {moment(value).format("DD-MM-YYYY")}
                         </TableCell>
                       );
-                    })}
-                  </TableRow>
-                );
-              })}
+                    }
+
+                    return (
+                      <TableCell
+                        key={column.id}
+                        align={"center"}
+                        style={{
+                          fontSize: 16,
+                          fontWeight: "bold",
+                          fontFamily: "monospace",
+                        }}
+                      >
+                        {value}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
         {/* </TableContainer> */}
@@ -506,6 +628,15 @@ export const Salida = () => {
         />
       </Paper>
 
+      {ShowConfirm && (
+        <ConfirmModal
+          show={true}
+          message="Desea eliminar la Venta Seleccionada?"
+          onConfirm={deleteSalida}
+          onCancel={handleCloseModal}
+        />
+      )}
+
       <Modal
         open={modal}
         onClose={handleCloseModal}
@@ -519,28 +650,46 @@ export const Salida = () => {
       >
         <Fade in={modal}>
           <Box className="modal">
-            <p className="titulo-modal">Crear Venta</p>
-            <div style={{ margin: "0 auto" }}>
+            <p className="titulo-modal">{titulo}</p>
+            <div
+              style={{
+                margin: "0 auto",
+                display: "flex",
+                position: "relative",
+                bottom: "1em",
+              }}
+            >
               <Controller
                 name={`Code`}
                 rules={{ required: true }}
                 control={control}
                 render={({ field }) => (
-                  <TextField
-                    {...register("Code")}
-                    {...field}
-                    {...((`Code` in labelForInput && labelForInput[`Code`]) ||
-                      {})}
-                    size="small"
-                    id="outlined-basic"
-                    label="Codigo"
-                    variant="outlined"
-                    style={{
-                      width: 100,
-                      height: 10,
-                      alignSelf: "center",
-                      margin: "0px 10px 0px 0px",
+                  <Autocomplete
+                    options={codeSelect}
+                    value={valorCodigo}
+                    onChange={(event: any, newValue: string | "") => {
+                      setValorCodigo(newValue);
                     }}
+                    inputValue={saveCodigo}
+                    onInputChange={(event, newInputValue) => {
+                      setSaveCodigo(newInputValue);
+                    }}
+                    isOptionEqualToValue={(option, value) =>
+                      option.id === value.id
+                    }
+                    getOptionLabel={(option: any) =>
+                      option ? option.name : ""
+                    }
+                    renderInput={(params) => (
+                      <TextField {...params} label="Codigos..." />
+                    )}
+                    style={{
+                      width: 180,
+                      marginRight: ".2em",
+                      alignSelf: "center",
+                      height: 10,
+                    }}
+                    size="small"
                   />
                 )}
               ></Controller>
@@ -561,6 +710,10 @@ export const Salida = () => {
                     id="outlined-basic"
                     label="Cantidad"
                     variant="outlined"
+                    value={valorCantidad}
+                    onChange={(event: any) => {
+                      setValorCantidad(Number(event.target.value));
+                    }}
                     style={{
                       width: 100,
                       height: 10,
@@ -576,24 +729,30 @@ export const Salida = () => {
               rules={{ required: true }}
               control={control}
               render={({ field }) => (
-                <TextField
-                  {...register("Producto")}
-                  {...field}
-                  {...((`Producto` in labelForInput &&
-                    labelForInput[`Producto`]) ||
-                    {})}
-                  size="small"
-                  id="outlined-basic"
-                  label="Producto"
-                  variant="outlined"
+                <Autocomplete
+                  options={productSelect}
+                  value={valor}
+                  onChange={(event: any, newValue: string | "") => {
+                    setValor(newValue);
+                  }}
+                  inputValue={saveProducto}
+                  onInputChange={(event, newInputValue) => {
+                    setSaveProducto(newInputValue);
+                  }}
+                  isOptionEqualToValue={(option, value) =>
+                    option.id === value.id
+                  }
+                  getOptionLabel={(option: any) => (option ? option.name : "")}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Producto" />
+                  )}
                   style={{
-                    width: 200,
-                    height: 10,
-                    alignSelf: "center",
+                    width: 280,
                     margin: "0 auto",
                     position: "relative",
-                    top: "1.4em",
+                    top: "1.5em",
                   }}
+                  size="small"
                 />
               )}
             ></Controller>
@@ -603,37 +762,40 @@ export const Salida = () => {
               rules={{ required: true }}
               control={control}
               render={({ field }) => (
-                <TextField 
-                    {...register('Fecha')}
-                    {...field}
-                    {...((`Fecha` in labelForInput &&
-                          labelForInput[`Fecha`]) ||
-                          {})}
-                    className="date--picker-salida"
-                    type="date"
-                    label="Fecha Salida"
-                    InputLabelProps={{
-                      shrink: true,
-                    }}
-                  />
+                <TextField
+                  {...register("Fecha")}
+                  {...field}
+                  {...((`Fecha` in labelForInput && labelForInput[`Fecha`]) ||
+                    {})}
+                  className="date--picker-salida"
+                  type="date"
+                  label="Fecha Salida"
+                  value={valorFecha}
+                  onChange={(event: any) => {
+                    setValorFecha(event.target.value);
+                  }}
+                  InputLabelProps={{
+                    shrink: true,
+                  }}
+                />
               )}
             ></Controller>
 
             {modalUpdate && (
               <div className="botones">
                 <Button
-                  style={{ margin: 12, background: "#22184c" }}
+                  style={{ margin: 12, background: "#0036FF" }}
                   variant="contained"
                   type="submit"
-                  onClick={handleSubmit(updateSalida)}
+                  onClick={updateSalida}
                 >
                   Actualizar
                 </Button>
                 <Button
-                  style={{ margin: 12, background: "#22184c" }}
+                  style={{ margin: 12, background: "#0036FF" }}
                   variant="contained"
                   type="submit"
-                  onClick={handleSubmit(deleteSalida)}
+                  onClick={deleteSalida}
                 >
                   Eliminar
                 </Button>
@@ -643,10 +805,10 @@ export const Salida = () => {
             {modalCreacion && (
               <div className="botones">
                 <Button
-                  style={{ margin: 12, background: "#22184c" }}
+                  style={{ margin: 12, background: "#0036FF" }}
                   variant="contained"
                   type="submit"
-                  onClick={handleSubmit(createSalida)}
+                  onClick={createSalida}
                 >
                   Crear
                 </Button>
@@ -668,13 +830,14 @@ export const Salida = () => {
         }}
       >
         <Fade in={modalBusqueda}>
-          <form className="modal-busqueda">
+          <div className="modal-busqueda form-modal">
             {/* <p className="titulo-busqueda">Busqueda Inventario</p> */}
             <InputBase
               className="position-search-field"
               sx={{ ml: 1, flex: 1 }}
               placeholder="Buscador"
               onChange={handleonChangeBusqueda}
+              onKeyUp={handleOnKeyPressSearch}
               value={consulta.message}
             />
             <IconButton
@@ -692,7 +855,7 @@ export const Salida = () => {
                 width: "80%",
                 margin: "0 auto",
                 position: "relative",
-                bottom: "5em",
+                bottom: "1em",
               }}
             >
               {/* <TableContainer sx={{ maxHeight: 440 }}> */}
@@ -705,7 +868,7 @@ export const Salida = () => {
                         align={"center"}
                         style={{
                           minWidth: 100,
-                          background: "#22184c",
+                          background: "#0036FF",
                           color: "#fff",
                           margin: "0 auto",
                           fontSize: 20,
@@ -719,43 +882,41 @@ export const Salida = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {inventarioBusqueda
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((row) => {
-                      return (
-                        <TableRow
-                          hover
-                          role="checkbox"
-                          tabIndex={-1}
-                          key={row._id}
-                          onClick={() => handleOpenModal("actualizacion", row)}
-                        >
-                          {columnsBusqueda.map((column) => {
-                            const value = row[column.id];
-                            return (
-                              <TableCell key={column.id} align={"center"}>
-                                {typeof value === "number" ? value : value}
-                              </TableCell>
-                            );
-                          })}
-                        </TableRow>
-                      );
-                    })}
+                  {inventarioBusqueda.map((row) => {
+                    return (
+                      <TableRow
+                        hover
+                        role="checkbox"
+                        tabIndex={-1}
+                        key={row._id}
+                        onClick={() => handleOpenModal("creacionConsulta", row)}
+                      >
+                        {columnsBusqueda.map((column) => {
+                          const value = row[column.id];
+                          return (
+                            <TableCell key={column.id} align={"center"}>
+                              {typeof value === "number" ? value : value}
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
               {/* </TableContainer> */}
-              {/* <TablePagination
-          rowsPerPageOptions={[4, 25]}
-          defaultValue=""
-          component="div"
-          count={totalRegister}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        /> */}
+              <TablePagination
+                rowsPerPageOptions={[5]}
+                defaultValue=""
+                component="div"
+                count={totalRegisterSearch}
+                rowsPerPage={rowsPerPageSearch}
+                page={pageSearch}
+                onPageChange={handleChangePageSearch}
+                onRowsPerPageChange={handleChangeRowsPerPageSearch}
+              />
             </Paper>
-          </form>
+          </div>
         </Fade>
       </Modal>
       <ToastContainer />

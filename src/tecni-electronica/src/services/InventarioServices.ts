@@ -19,6 +19,26 @@ export default class InventarioServices {
         }
     }
 
+    getAllInventario() {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const response = await fetch(`${this.URL_API}`, {
+                    headers: this.headers()
+                });
+
+                if(response.ok) {
+                    const json = await response.json();
+                    resolve(json);
+                } else {
+                    const json = await response.json();
+                    reject(json);
+                }
+            } catch (error) {
+                reject(error)
+            }
+        })
+    }
+
     getInventarioPagination(limit: number, skip: number) {
         return new Promise(async(resolve, reject) => {
             try {
@@ -39,10 +59,10 @@ export default class InventarioServices {
         })
     }
 
-    getSearchForInventario(filtro: any) {
+    getSearchForInventario(filtro: any, skip?: number, limit?: number) {
         return new Promise(async (resolve, reject) => {
             try {
-                const response = await fetch(`${this.URL_API}/${filtro}`, {
+                const response = await fetch(`${this.URL_API}/${filtro}?skip=${skip}&limit=${limit}`, {
                     method: 'GET',
                     headers: this.headers()
                 });

@@ -23,7 +23,6 @@ export const verifyToken = async (req, res, next) => {
 
 export const isModerator = async (req, res, next) => {
     try {
-        console.log(req.body);
         let token = req.headers["x-access-token"];
         const decoded = jwt.verify(token, SECRET);
         req.userId = decoded.id;
@@ -38,7 +37,6 @@ export const isModerator = async (req, res, next) => {
         }
         res.status(403).json({ message: "Requiere el rol moderador!" })
     } catch (error) {
-        console.log(error);
         res.status(500).send({ message: error.message });        
     }
 }

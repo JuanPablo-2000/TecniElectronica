@@ -18,13 +18,17 @@ var inventarioSchema = new _mongoose["default"].Schema({
     type: Number
   },
   precio: {
-    type: Number
+    type: String
   },
   fecha: {
     type: String
   },
   salida: {
     type: Number
+  },
+  nota: {
+    type: String,
+    "default": ""
   }
 }, {
   timestamps: {

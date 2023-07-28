@@ -104,17 +104,11 @@ export const Login = () => {
           <h2>Inicio de Sesion</h2>
           <Box sx={{ display: "flex", alignItems: "flex-end", marginTop: 7 }}>
             <OutlinedInput
-              style={{ margin: "0 auto", height: 40, width: 290 }}
+              style={{ margin: "0 auto", height: 35, width: 290 }}
               placeholder="Username"
               size="small"
               {...register("username")}
-              endAdornment={
-                <InputAdornment position="end">
-                  <IconButton edge="end">
-                    <AccountCircleIcon />
-                  </IconButton>
-                </InputAdornment>
-              }
+              
             />
           </Box>
 
@@ -127,7 +121,7 @@ export const Login = () => {
             }}
           >
             <OutlinedInput
-              style={{ margin: "0 auto", height: 40 }}
+              style={{ margin: "0 auto", height: 35 }}
               placeholder="Password"
               size="small"
               {...register("password")}
@@ -154,7 +148,7 @@ export const Login = () => {
               margin: "0 auto",
               position: "relative",
               bottom: 1,
-              backgroundColor: "#22184c",
+              backgroundColor: "#25356D",
               textTransform: "capitalize",
               fontFamily: "cursive",
               fontSize: "20px",

@@ -74,56 +74,54 @@ var isModerator = /*#__PURE__*/function () {
       while (1) switch (_context2.prev = _context2.next) {
         case 0:
           _context2.prev = 0;
-          console.log(req.body);
           token = req.headers["x-access-token"];
           decoded = _jsonwebtoken["default"].verify(token, _config.SECRET);
           req.userId = decoded.id;
-          _context2.next = 7;
+          _context2.next = 6;
           return _User["default"].findById(req.userId);
-        case 7:
+        case 6:
           user = _context2.sent;
-          _context2.next = 10;
+          _context2.next = 9;
           return _Rol["default"].find({
             _id: {
               $in: user.roles
             }
           });
-        case 10:
+        case 9:
           roles = _context2.sent;
           i = 0;
-        case 12:
+        case 11:
           if (!(i < roles.length)) {
-            _context2.next = 19;
+            _context2.next = 18;
             break;
           }
           if (!(roles[i].name === 'moderador' || roles[i].name === 'admin')) {
-            _context2.next = 16;
+            _context2.next = 15;
             break;
           }
           next();
           return _context2.abrupt("return");
-        case 16:
+        case 15:
           i++;
-          _context2.next = 12;
+          _context2.next = 11;
           break;
-        case 19:
+        case 18:
           res.status(403).json({
             message: "Requiere el rol moderador!"
           });
-          _context2.next = 26;
+          _context2.next = 24;
           break;
-        case 22:
-          _context2.prev = 22;
+        case 21:
+          _context2.prev = 21;
           _context2.t0 = _context2["catch"](0);
-          console.log(_context2.t0);
           res.status(500).send({
             message: _context2.t0.message
           });
-        case 26:
+        case 24:
         case "end":
           return _context2.stop();
       }
-    }, _callee2, null, [[0, 22]]);
+    }, _callee2, null, [[0, 21]]);
   }));
   return function isModerator(_x4, _x5, _x6) {
     return _ref2.apply(this, arguments);

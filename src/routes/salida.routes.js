@@ -8,6 +8,7 @@ router.post("/", [isModerator, verifyToken], salidaCtrl.createSalida);
 router.get("/", salidaCtrl.getSalidas);
 router.get("/pagination", salidaCtrl.getSalidasPaginations);
 router.get("/:search", salidaCtrl.getSearchSalida);
+router.get("/inventario/:searchInventario", salidaCtrl.getSearchConsultaInventario);
 router.get("/dateCurrent", salidaCtrl.getSearchDateCurrentSalidas);
 router.put("/:salidaId", [isModerator, verifyToken], salidaCtrl.updateSalidaById);
 router.delete("/:salidaId", [isModerator, verifyToken], salidaCtrl.deleteSalidaById);

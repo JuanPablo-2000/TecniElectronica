@@ -33,12 +33,17 @@ import Fade from "@mui/material/Fade";
 import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 
-import moment from 'moment';
+import moment from "moment";
+
+import Autocomplete from "@mui/material/Autocomplete";
 
 import { useForm, Controller, SubmitHandler } from "react-hook-form";
 
 import EntradaServices from "../services/EntradaServices";
 import InventarioServices from "../services/InventarioServices";
+import { ConfirmModal } from "./ConfirmModal";
+import { Codigo, Producto } from "../interfaces/Selects";
+import { Typography } from "@mui/material";
 
 interface Column {
   id: "code" | "product" | "quantity" | "creado";
@@ -71,10 +76,13 @@ const serviceInventario = new InventarioServices();
 
 export const Entrada = () => {
   const [page, setPage] = useState(0);
+  const [pageSearch, setPageSearch] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPageSearch, setRowsPerPageSearch] = useState(5);
   const [infoRow, setInfoRow] = useState<any>();
   const [modal, setModal] = useState(false);
   const [permission, setPermission] = useState(false);
+  const [ShowConfirm, setShowConfirm] = useState(false);
 
   const [modalCreacion, setModalCreacion] = useState(false);
   const [modalUpdate, setModalUpdate] = useState(false);
@@ -82,12 +90,23 @@ export const Entrada = () => {
   const [consulta, setConsulta] = useState({ message: "" });
   const [busqueda, setBusqueda] = useState({ message: "" });
   const [labelForInput, setLabelForInput] = useState<any>({});
+  const [titulo, setTitulo] = useState<any>();
 
   const [entrada, setEntrada] = useState<any[]>([]);
   const [inventarioBusqueda, setInventarioBusqueda] = useState<any[]>([]);
 
   const [skip, setSkip] = useState(0);
+  const [skipSearch, setSkipSearch] = useState(0);
   const [totalRegister, setTotalRegister] = useState<number>(0);
+  const [totalRegisterSearch, setTotalRegisterSearch] = useState<number>(0);
+  const [productSelect, setProductSelect] = useState<any[]>([]);
+  const [codeSelect, setCodeSelect] = useState<any[]>([]);
+  const [saveCodigo, setSaveCodigo] = useState<any>();
+  const [valorCodigo, setValorCodigo] = useState<any>();
+  const [valorCantidad, setValorCantidad] = useState<any>();
+  const [valorFecha, setValorFecha] = useState<any>();
+  const [saveProducto, setSaveProducto] = useState<any>();
+  const [valor, setValor] = useState<any>();
 
   const { register, control, handleSubmit, formState, getValues, setValue } =
     useForm({
@@ -96,15 +115,16 @@ export const Entrada = () => {
         Code: infoRow?.code || "",
         Producto: infoRow?.product || "",
         Cantidad: infoRow?.quantity || "",
-        Fecha: infoRow?.creado || ""
+        Fecha: infoRow?.creado || "",
       },
     });
 
   const navigate = useNavigate();
 
-  const handleChangePage = (event: any, newPage: number) => {
+  const handleChangePage = async (event: any, newPage: number) => {
     // validar cuando se hace el Search para retonarlo con paginacion
-    getEntradasForPageable(newPage * rowsPerPage);
+    const entradas = await getEntradasForPageable(newPage * rowsPerPage);
+    setEntrada(entradas);
     setPage(newPage);
   };
 
@@ -115,38 +135,79 @@ export const Entrada = () => {
     setPage(0);
   };
 
+  const handleChangePageSearch = async (event: any, newPage: number) => {
+    setSkipSearch(newPage * rowsPerPageSearch);
+    const data: any = await service.getSearchConsultaInventario(
+      consulta.message,
+      newPage * rowsPerPageSearch,
+      rowsPerPageSearch
+    );
+    setInventarioBusqueda(data?.content);
+    setPageSearch(newPage);
+  };
+
+  const handleChangeRowsPerPageSearch = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    setRowsPerPageSearch(+event.target.value);
+    setPageSearch(0);
+  };
+
   const handleOpenModal = (modo?: any, info?: any) => {
-    if (modo === "actualzacion") {
+    if (modo === "actualizacion") {
       setModalUpdate(true);
       setModalCreacion(false);
       setModal(true);
 
-      
-      setValue("Producto", info.product);
-      setValue("Cantidad", info.quantity);
-      setValue("Fecha", moment(info.creado).format('yyyy-MM-DD'));
-      setValue("Code", info.code);
-      
+      // setValue("Producto", info.product);
+      // setValue("Code", info.code);
+      setValor({ name: info.product });
+      setValorCodigo({ name: info.code });
+      setValorCantidad(info.quantity);
+      setValorFecha(moment(info.creado).format("yyyy-MM-DD"));
+
       setInfoRow(info);
+      setTitulo("Actualizar Entrada");
     } else {
       setModalCreacion(true);
       setModalUpdate(false);
       setModal(true);
 
-      setValue("Producto", "");
-      setValue("Cantidad", "");
-      setValue("Fecha", "");
-      setValue("Code", "");
+      setValor("");
+      setValorCodigo("");
+      setValorCantidad("");
+      setValorFecha("");
+
+      setTitulo("Crear Entrada");
+    }
+  };
+
+  const handleOpenModalBusqueda = (modo?: any, info?: any) => {
+    if (modo === "actualizacion") {
+      setModalUpdate(true);
+      setModalCreacion(false);
+      setModal(true);
+
+      // setValue("Producto", info.product);
+      // setValue("Cantidad", info.stock);
+      // setValue("Fecha", moment(info.creado).format("yyyy-MM-DD"));
+      // setValue("Code", info.code);
+
+      setValor({ name: info.product });
+      setValorCodigo({ name: info.code });
+
+      setInfoRow(info);
+      setTitulo("Actualizar Entrada");
     }
   };
 
   const createEntrada = async (data: any) => {
     try {
       const body: any = {
-        code: data.Code.toUpperCase(),
-        product: data.Producto.toUpperCase(),
-        quantity: Number(data.Cantidad),
-        creado: data.Fecha,
+        code: valorCodigo.name.toUpperCase(),
+        product: valor.name.toUpperCase(),
+        quantity: valorCantidad,
+        creado: valorFecha,
       };
 
       const response = await service.createEntrada(body);
@@ -180,11 +241,14 @@ export const Entrada = () => {
     try {
       const id = infoRow._id;
 
+      console.log(id);
+      
+
       const body = {
-        code: data.Code.toUpperCase(),
-        producto: data.Producto.toUpperCase(),
-        quantity: Number(data.Cantidad),
-        creado: data.Fecha
+        code: valorCodigo.name.toUpperCase(),
+        product: valor.name.toUpperCase(),
+        quantity: valorCantidad,
+        creado: valorFecha,
       };
 
       const response = await service.updateEntrada(body, id);
@@ -217,7 +281,7 @@ export const Entrada = () => {
     }
   };
 
-  const deleteEntrada = async (data: any) => {
+  const deleteEntrada = async () => {
     try {
       const id = infoRow._id;
 
@@ -248,18 +312,15 @@ export const Entrada = () => {
         theme: "light",
       });
     }
+    setShowConfirm(false);
   };
 
   const SearchForEntrada = async () => {
-    console.log("entre");
-
     if (busqueda.message === "") {
       const response: any = await getEntradasForPageable();
       setEntrada(response);
     } else {
       const response: any = await service.getSearchForEntrada(busqueda.message);
-      console.log(response);
-
       setEntrada(response.content);
     }
     setBusqueda({ message: "" });
@@ -269,11 +330,46 @@ export const Entrada = () => {
     if (consulta.message === "") {
       setInventarioBusqueda([]);
     } else {
-      const response: any = await serviceInventario.getSearchForInventario(
-        consulta.message
+      const response: any = await service.getSearchConsultaInventario(
+        consulta.message,
+        skipSearch,
+        5
       );
       setInventarioBusqueda(response.content);
-      setConsulta({ message: "" });
+      setTotalRegisterSearch(response.total);
+    }
+  };
+
+  const handleOnKeyPress = async (e: any) => {
+    if (e.key === "Enter") {
+      if (busqueda.message === "") {
+        const response: any = await getEntradasForPageable();
+        setEntrada(response);
+        setBusqueda({ message: "" });
+      } else {
+        const response: any = await service.getSearchForEntrada(
+          busqueda.message
+        );
+        setEntrada(response.content);
+        setBusqueda({ message: "" });
+      }
+    }
+  };
+
+  const handleOnKeyPressBusqueda = async (e: any) => {
+    if (e.key === "Enter") {
+      if (consulta.message === "") {
+        setInventarioBusqueda([]);
+        setTotalRegisterSearch(0);
+      } else {
+        const response: any = await service.getSearchConsultaInventario(
+          consulta.message,
+          skipSearch,
+          rowsPerPageSearch
+        );
+        setInventarioBusqueda(response.content);
+        setTotalRegisterSearch(response.total);
+      }
     }
   };
 
@@ -297,12 +393,15 @@ export const Entrada = () => {
 
   const handleCloseModal = () => {
     setModal(false);
+    setShowConfirm(false);
+    setValor("");
+    setValorCodigo("");
   };
 
   const getEntradasForPageable = async (offset?: number) => {
     const data: any = await service.getEntradaPaginations(
-      offset ? offset : 0,
-      skip
+      0,
+      offset ? offset : 0
     );
 
     if (data?.total != undefined) {
@@ -336,6 +435,21 @@ export const Entrada = () => {
     }
   };
 
+  const fillDataSelect = async () => {
+    const infoInventario: any = await serviceInventario.getAllInventario();
+
+    const dataProduct: Producto[] = [];
+    const dataCode: Codigo[] = [];
+
+    infoInventario.map((info: any) => {
+      dataProduct.push({ name: info.product });
+      dataCode.push({ name: info.code });
+    });
+
+    setProductSelect(dataProduct);
+    setCodeSelect(dataCode);
+  };
+
   const onDirectSalidas = () => {
     navigate("/salida");
   };
@@ -346,6 +460,7 @@ export const Entrada = () => {
 
   useEffect(() => {
     configInitial();
+    fillDataSelect();
   }, []);
 
   const logOut = () => {
@@ -357,31 +472,6 @@ export const Entrada = () => {
   return (
     <>
       <nav className="nav-bar">
-        <Paper
-          sx={{
-            p: "2px 4px",
-            display: "flex",
-            position: "relative",
-            width: 200,
-            height: 40,
-          }}
-        >
-          <InputBase
-            sx={{ ml: 1, flex: 1 }}
-            placeholder="Buscador"
-            onChange={handleOnChange}
-            value={busqueda.message}
-          />
-          <IconButton
-            type="button"
-            sx={{ p: "20px", left: 10 }}
-            aria-label="search"
-            onClick={SearchForEntrada}
-          >
-            <SearchIcon />
-          </IconButton>
-        </Paper>
-
         <div className="create-button" onClick={handleOpenModal}>
           <img src={CreateInventario} alt="" />
           <h2>Agregar</h2>
@@ -410,17 +500,33 @@ export const Entrada = () => {
         </div>
       </nav>
 
-      <h3
-        style={{
-          fontSize: 40,
-          display: "flex",
-          justifyContent: "center",
-          color: "#22184c",
-          margin: "1em 0em 0em 0em",
-        }}
-      >
-        Registros de Entradas
-      </h3>
+      <div className="flex-title">
+        <Paper
+          sx={{
+            p: "2px 4px",
+            display: "flex",
+            position: "relative",
+            width: 400,
+            height: 40,
+          }}
+        >
+          <InputBase
+            sx={{ ml: 1, flex: 1 }}
+            placeholder="Entradas..."
+            onKeyDown={handleOnKeyPress}
+            onChange={handleOnChange}
+            value={busqueda.message}
+          />
+          <IconButton
+            type="button"
+            sx={{ p: "20px", left: 10 }}
+            aria-label="search"
+            onClick={SearchForEntrada}
+          >
+            <SearchIcon />
+          </IconButton>
+        </Paper>
+      </div>
 
       <Modal
         open={modal}
@@ -435,28 +541,46 @@ export const Entrada = () => {
       >
         <Fade in={modal}>
           <Box className="modal">
-            <p className="titulo-modal">Crear Entrada</p>
-            <div style={{ margin: "0 auto" }}>
+            <p className="titulo-modal">{titulo}</p>
+            <div
+              style={{
+                margin: "0 auto",
+                display: "flex",
+                position: "relative",
+                bottom: "1em",
+              }}
+            >
               <Controller
                 name={`Code`}
                 rules={{ required: true }}
                 control={control}
                 render={({ field }) => (
-                  <TextField
-                    {...register("Code")}
-                    {...field}
-                    {...((`Code` in labelForInput && labelForInput[`Code`]) ||
-                      {})}
-                    size="small"
-                    id="outlined-basic"
-                    label="Codigo"
-                    variant="outlined"
-                    style={{
-                      width: 100,
-                      height: 10,
-                      alignSelf: "center",
-                      margin: "0px 10px 0px 0px",
+                  <Autocomplete
+                    options={codeSelect}
+                    value={valorCodigo}
+                    onChange={(event: any, newValue: string | "") => {
+                      setValorCodigo(newValue);
                     }}
+                    inputValue={saveCodigo}
+                    onInputChange={(event, newInputValue) => {
+                      setSaveCodigo(newInputValue);
+                    }}
+                    isOptionEqualToValue={(option, value) =>
+                      option.id === value.id
+                    }
+                    getOptionLabel={(option: any) =>
+                      option ? option.name : ""
+                    }
+                    renderInput={(params) => (
+                      <TextField {...params} label="Codigos..." />
+                    )}
+                    style={{
+                      width: 180,
+                      marginRight: ".2em",
+                      alignSelf: "center",
+                      height: 10,
+                    }}
+                    size="small"
                   />
                 )}
               ></Controller>
@@ -477,6 +601,10 @@ export const Entrada = () => {
                     id="outlined-basic"
                     label="Cantidad"
                     variant="outlined"
+                    value={valorCantidad}
+                    onChange={(event: any) => {
+                      setValorCantidad(Number(event.target.value));
+                    }}
                     style={{
                       width: 100,
                       height: 10,
@@ -492,24 +620,31 @@ export const Entrada = () => {
               rules={{ required: true }}
               control={control}
               render={({ field }) => (
-                <TextField
-                  {...register("Producto")}
-                  {...field}
-                  {...((`Producto` in labelForInput &&
-                    labelForInput[`Producto`]) ||
-                    {})}
+                <Autocomplete
+                  options={productSelect}
+                  value={valor || ""}
+                  onChange={(event: any, newValue: string | "") => {
+                    setValor(newValue);
+                  }}
+                  inputValue={saveProducto}
+                  onInputChange={(event, newInputValue) => {
+                    setSaveProducto(newInputValue);
+                  }}
+                  isOptionEqualToValue={(option, value) =>
+                    option.id === value.id
+                  }
+                  getOptionLabel={(option: any) => (option ? option.name : "")}
+                  renderInput={(params) => (
+                    <TextField {...params} label="Producto" />
+                  )}
                   style={{
-                    width: 200,
-                    height: 10,
-                    alignSelf: "center",
+                    width: 280,
                     margin: "0 auto",
                     position: "relative",
-                    top: "1.4em",
+                    top: "1.5em",
+                    fontFamily: "cursive",
                   }}
                   size="small"
-                  id="outlined-basic"
-                  label="Producto"
-                  variant="outlined"
                 />
               )}
             ></Controller>
@@ -520,29 +655,32 @@ export const Entrada = () => {
               control={control}
               render={({ field }) => {
                 return (
-                  <TextField 
-                    {...register('Fecha')}
+                  <TextField
+                    {...register("Fecha")}
                     {...field}
-                    {...((`Fecha` in labelForInput &&
-                          labelForInput[`Fecha`]) ||
-                          {})}
+                    {...((`Fecha` in labelForInput && labelForInput[`Fecha`]) ||
+                      {})}
                     className="date--picker-salida"
                     type="date"
                     label="Fecha Entrada"
+                    value={valorFecha}
+                    onChange={(event: any) => {
+                      setValorFecha(event.target.value);
+                    }}
                     InputLabelProps={{
                       shrink: true,
                     }}
                   />
-                )
+                );
               }}
             ></Controller>
 
             {modalCreacion && (
               <div className="botones">
                 <Button
-                  style={{ margin: 12, background: "#22184c" }}
+                  style={{ margin: 12, background: "#0036FF" }}
                   variant="contained"
-                  onClick={handleSubmit(createEntrada)}
+                  onClick={createEntrada}
                 >
                   Crear
                 </Button>
@@ -552,16 +690,16 @@ export const Entrada = () => {
             {modalUpdate && (
               <div className="botones">
                 <Button
-                  style={{ margin: 12, background: "#22184c" }}
+                  style={{ margin: 12, background: "#0036FF" }}
                   variant="contained"
-                  onClick={handleSubmit(updateEntrada)}
+                  onClick={updateEntrada}
                 >
                   Actualizacion
                 </Button>
                 <Button
-                  style={{ margin: 12, background: "#22184c" }}
+                  style={{ margin: 12, background: "#0036FF" }}
                   variant="contained"
-                  onClick={handleSubmit(deleteEntrada)}
+                  onClick={deleteEntrada}
                 >
                   Eliminar
                 </Button>
@@ -570,6 +708,15 @@ export const Entrada = () => {
           </Box>
         </Fade>
       </Modal>
+
+      {ShowConfirm && (
+        <ConfirmModal
+          show={true}
+          message="Desea eliminar la entrada seleccionada?"
+          onConfirm={deleteEntrada}
+          onCancel={handleCloseModal}
+        />
+      )}
 
       <Modal
         open={modalBusqueda}
@@ -583,13 +730,14 @@ export const Entrada = () => {
         }}
       >
         <Fade in={modalBusqueda}>
-          <form className="modal-busqueda">
+          <div className="modal-busqueda form-modal">
             {/* <p className="titulo-busqueda">Busqueda Inventario</p> */}
             <InputBase
               className="position-search-field"
               sx={{ ml: 1, flex: 1 }}
               placeholder="Buscador"
               onChange={handleonChangeBusqueda}
+              onKeyUp={handleOnKeyPressBusqueda}
               value={consulta.message}
             />
             <IconButton
@@ -607,7 +755,7 @@ export const Entrada = () => {
                 width: "80%",
                 margin: "0 auto",
                 position: "relative",
-                bottom: "5em",
+                bottom: "1em",
               }}
             >
               {/* <TableContainer sx={{ maxHeight: 440 }}> */}
@@ -620,7 +768,7 @@ export const Entrada = () => {
                         align={"center"}
                         style={{
                           minWidth: 100,
-                          background: "#22184c",
+                          background: "#0036FF",
                           color: "#fff",
                           margin: "0 auto",
                           fontSize: 20,
@@ -634,43 +782,51 @@ export const Entrada = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {inventarioBusqueda
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((row) => {
-                      return (
-                        <TableRow
-                          hover
-                          role="checkbox"
-                          tabIndex={-1}
-                          key={row._id}
-                          onClick={() => handleOpenModal("actualizacion", row)}
-                        >
-                          {columnsBusqueda.map((column) => {
-                            const value = row[column.id];
-                            return (
-                              <TableCell key={column.id} align={"center"}>
-                                {typeof value === "number" ? value : value}
-                              </TableCell>
-                            );
-                          })}
-                        </TableRow>
-                      );
-                    })}
+                  {inventarioBusqueda.map((row) => {
+                    return (
+                      <TableRow
+                        hover
+                        role="checkbox"
+                        tabIndex={-1}
+                        key={row._id}
+                        onClick={() =>
+                          handleOpenModalBusqueda("actualizacion", row)
+                        }
+                      >
+                        {columnsBusqueda.map((column) => {
+                          const value = row[column.id];
+                          return (
+                            <TableCell
+                              key={column.id}
+                              align={"center"}
+                              style={{
+                                fontSize: 16,
+                                fontWeight: "bold",
+                                fontFamily: "monospace",
+                              }}
+                            >
+                              {typeof value === "number" ? value : value}
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
               {/* </TableContainer> */}
-              {/* <TablePagination
-          rowsPerPageOptions={[4, 25]}
-          defaultValue=""
-          component="div"
-          count={totalRegister}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        /> */}
+              <TablePagination
+                rowsPerPageOptions={[5]}
+                defaultValue=""
+                component="div"
+                count={totalRegisterSearch}
+                rowsPerPage={rowsPerPageSearch}
+                page={pageSearch}
+                onPageChange={handleChangePageSearch}
+                onRowsPerPageChange={handleChangeRowsPerPageSearch}
+              />
             </Paper>
-          </form>
+          </div>
         </Fade>
       </Modal>
 
@@ -692,7 +848,7 @@ export const Entrada = () => {
                     align={"center"}
                     style={{
                       minWidth: 100,
-                      background: "#22184c",
+                      background: "#0036FF",
                       color: "#fff",
                       margin: "0 auto",
                       fontSize: 20,
@@ -707,44 +863,58 @@ export const Entrada = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {entrada
-              .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-              .map((row, index) => {
-                return (
-                  <TableRow
-                    hover
-                    role="checkbox"
-                    tabIndex={-1}
-                    key={index}
-                    onClick={() => {
-                      handleOpenModal("actualzacion", row);
-                    }}
-                  >
-                    {columns.map((column) => {
-                      const value = row[column.id];
-                      
-                      if (column.id == "creado") {
-                        return (
-                          <TableCell key={column.id} align={"center"}>
-                            {moment(value).format("DD-MM-YYYY")}
-                          </TableCell>
-                        );
-                      }
+            {entrada.map((row, index) => {
+              return (
+                <TableRow
+                  hover
+                  role="checkbox"
+                  tabIndex={-1}
+                  key={index}
+                  onClick={() => {
+                    handleOpenModal("actualizacion", row);
+                  }}
+                >
+                  {columns.map((column) => {
+                    const value = row[column.id];
 
+                    if (column.id == "creado") {
                       return (
-                        <TableCell key={column.id} align={"center"}>
-                          {value}
+                        <TableCell
+                          key={column.id}
+                          align={"center"}
+                          style={{
+                            fontSize: 16,
+                            fontWeight: "bold",
+                            fontFamily: "monospace",
+                          }}
+                        >
+                          {moment(value).format("DD-MM-YYYY")}
                         </TableCell>
                       );
-                    })}
-                  </TableRow>
-                );
-              })}
+                    }
+
+                    return (
+                      <TableCell
+                        key={column.id}
+                        align={"center"}
+                        style={{
+                          fontSize: 16,
+                          fontWeight: "bold",
+                          fontFamily: "monospace",
+                        }}
+                      >
+                        {value}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              );
+            })}
           </TableBody>
         </Table>
 
         <TablePagination
-          rowsPerPageOptions={[10, 25]}
+          rowsPerPageOptions={[10]}
           defaultValue=""
           component="div"
           count={totalRegister}
@@ -755,134 +925,6 @@ export const Entrada = () => {
         />
       </Paper>
       <ToastContainer />
-      {/* <Modal
-        open={modal}
-        onClose={handleCloseModal}
-        closeAfterTransition
-        slots={{ backdrop: Backdrop }}
-        slotProps={{
-          backdrop: {
-            timeout: 500,
-          },
-        }}
-      >
-        <Fade in={modal}>
-          <Box className="modal">
-            <p className="titulo-modal">Modificar Entrada</p>
-            <div style={{ margin: '0 auto'}}>
-            <TextField
-              style={{
-                width: 100,
-                height: 10,
-                alignSelf: "center",
-                margin: "0px 10px 0px 0px",
-              }}
-              size="small"
-              id="outlined-basic"
-              label="Codigo"
-              variant="outlined"
-            />
-            <TextField
-              style={{
-                width: 100,
-                height: 10,
-                alignSelf: "center",
-                
-              }}
-              size="small"
-              id="outlined-basic"
-              label="Cantidad"
-              variant="outlined"
-            />
-            </div>
-            <TextField
-              style={{
-                width: 200,
-                height: 10,
-                alignSelf: "center",
-                margin: "0 auto",
-                position: 'relative',
-                top: '1.4em',
-              }}
-              size="small"
-              id="outlined-basic"
-              label="Producto"
-              variant="outlined"
-            />
-          <div className="botones">
-            <Button style={{ margin: 12, background: '#22184c' }} variant="contained">Actualizar</Button>
-            <Button style={{ background: '#22184c' }} variant="contained">Eliminar</Button>
-          </div>
-          </Box>
-        </Fade>
-      </Modal> */}
-      {/* <div className="formulario">
-        <p className="entradas-style">Entradas</p>
-        <TextField
-          style={{
-            width: 200,
-            height: 10,
-            alignSelf: "center",
-            margin: "15px 0 30px 0",
-          }}
-          size="small"
-          id="outlined-basic"
-          label="Codigo"
-          variant="outlined"
-        />
-        <TextField
-          style={{
-            width: 200,
-            height: 10,
-            alignSelf: "center",
-            margin: "6px 0 30px 0",
-          }}
-          size="small"
-          id="outlined-basic"
-          label="Producto"
-          variant="outlined"
-        />
-        <TextField
-          style={{
-            width: 200,
-            height: 10,
-            alignSelf: "center",
-            margin: "6px 0 30px 0",
-          }}
-          size="small"
-          id="outlined-basic"
-          label="Cantidad"
-          variant="outlined"
-        />
-        <TextField
-          style={{
-            width: 200,
-            height: 10,
-            alignSelf: "center",
-            margin: "6px 0 60px 0",
-          }}
-          size="small"
-          id="outlined-basic"
-          label="Precio"
-          variant="outlined"
-        />
-        <Button
-          size="small"
-          style={{
-            width: 200,
-            margin: "0 auto",
-            position: "relative",
-            top: 30,
-            backgroundColor: "#22184c",
-            textTransform: "capitalize",
-            fontFamily: "cursive",
-            fontSize: "16px",
-          }}
-          variant="contained"
-        >
-          Ingresar
-        </Button>
-      </div> */}
     </>
   );
 };

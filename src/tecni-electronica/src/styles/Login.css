@@ -56,17 +56,17 @@
   }
 
   .header {
-    background-color: #22184c;
+    background-color: #0036FF;
     background-image: linear-gradient(to bottom, rgba(#715, .5), transparent);
     color: #ddf;
   }
 
   .content {
-    color: #22184c;
+    color: #0036FF;
   }
 
   .font-behind {
-    background-color: #22184c;
+    background-color: #ffffff;
     width: 100%;
     height: 100vh;
   }
@@ -118,7 +118,7 @@
   .button-login {
     border: none;
     color: #ffffff;
-    background: #22184c;
+    background: #0036FF;
     width: 260px;
     height: 40px;
     border-radius: 5px;
@@ -132,7 +132,7 @@
 
   .contenedor h2 {
     margin: 0 auto;
-    color: #22184c;
+    color: #25356D;
     position: relative;
     top: 1em;
   }

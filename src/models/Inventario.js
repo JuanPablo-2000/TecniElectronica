@@ -6,9 +6,10 @@ const inventarioSchema = new mongoose.Schema(
         code: { type: String },
         product: { type: String },
         stock: { type: Number },
-        precio: { type: Number },
+        precio: { type: String },
         fecha: { type: String },
-        salida: { type: Number }
+        salida: { type: Number },
+        nota: { type: String, default: "" }
     },
     {
         timestamps: {

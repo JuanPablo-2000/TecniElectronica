@@ -59,6 +59,27 @@ export default class SalidaServices {
         });
     }
 
+    getSearchConsultaInventario(filtro: any, skip?: number, limit?: number) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const response = await fetch(`${this.URL_API}/inventario/${filtro}?skip=${skip}&limit=${limit}`, {
+                    method: 'GET',
+                    headers: this.headers()
+                });
+                
+                if(response.ok) {
+                    const json = await response.json();
+                    resolve(json);
+                }else {
+                    const json = await response.json();
+                    reject(json);
+                }
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
     createSalida(body: any) {
         return new Promise(async(resolve, reject) => {
             try {

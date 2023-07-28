@@ -5,7 +5,9 @@ export const createEntrada = async (req, res) => {
   const { code, product, quantity, creado } = req.body;
 
   try {
-    const foundInventary = await Inventario.findOne({ code: { $regex: code, $options: 'i' } });
+    const foundInventary = await Inventario.findOne({
+      code: { $regex: code, $options: "i" },
+    });
 
     const newEntrada = new Entrada({
       code,
@@ -14,12 +16,13 @@ export const createEntrada = async (req, res) => {
       creado,
     });
 
+
     if (foundInventary) {
       const inventary = {
         code: foundInventary.code,
         product: foundInventary.product,
         stock: Number(foundInventary.stock) + Number(quantity),
-        precio: foundInventary.precio
+        precio: foundInventary.precio,
       };
 
       const updateFoundEntrada = await Inventario.updateOne(
@@ -30,7 +33,9 @@ export const createEntrada = async (req, res) => {
       const entradaSaved = await newEntrada.save();
       res.status(201).json(entradaSaved);
     } else {
-        res.status(404).json('El producto no se encontro porfavor verifique el inventario');
+      res
+        .status(404)
+        .json("El producto no se encontro porfavor verifique el inventario");
     }
   } catch (error) {
     return res.status(500).json(error);
@@ -39,34 +44,46 @@ export const createEntrada = async (req, res) => {
 
 export const updateEntradaById = async (req, res) => {
   try {
+    let updatebody = {}
     
-    const entrada = await Entrada.findOne({ code: { $regex: req.body.code, $options: 'i' } });
+    const entrada = await Entrada.findOne({
+      _id: req.params.entradaId
+    });
 
-    const updateEntrada = await Entrada.findByIdAndUpdate(
-      req.params.entradaId,
-      req.body,
-      {
-        new: true,
-      }
-    );
-
-    if (req.body.entrada != entrada) {
+    
+    if (req.body.quantity != entrada.quantity) {
       const foundInventary = await Inventario.findOne({ code: req.body.code });
-    
+
       const inventary = {
         code: foundInventary.code,
         product: foundInventary.product,
         entrada: foundInventary.entrada,
         salida: foundInventary.salida,
-        stock: foundInventary.stock + entrada.quantity,
-        precio: foundInventary.precio
+        stock: req.body.quantity,
+        precio: foundInventary.precio,
       };
-
+      
       const updateFoundEntrada = await Inventario.updateOne(
         { _id: foundInventary._id },
         { $set: inventary }
+        );
+      }
+
+      updatebody = {
+        code: req.body.code,
+        product: req.body.product,
+        quantity: req.body.quantity,
+        creado: req.body.creado
+      }
+
+      console.log(updateEntrada, req.body);
+
+      const updateEntrada = await Entrada.findByIdAndUpdate(
+        req.params.entradaId,
+        req.body,
       );
-    }
+
+      console.log(updateEntrada);
 
     res.status(200).json(updateEntrada);
   } catch (error) {
@@ -82,8 +99,26 @@ export const deleteEntradaById = async (req, res) => {
     if (!validacion) {
       res.json("No se ha encontrado el producto a eliminar");
     } else {
-      await Entrada.findByIdAndDelete(entradaId);
-      res.status(200).json("Entrada borrada correctamente!");
+      const findInventary = await Inventario.findOne({
+        code: { $regex: validacion.code, $options: "i" },
+      });
+
+      const inventary = {
+        code: findInventary.code,
+        product: findInventary.product,
+        stock: findInventary.stock - validacion.quantity,
+        precio: findInventary.precio,
+        fecha: findInventary.fecha,
+        salida: findInventary.salida,
+      };
+
+      const updateFoundInventary = await Inventario.updateOne(
+        { _id: findInventary._id },
+        { $set: inventary }
+      );
+
+      const response = await Entrada.findByIdAndDelete(entradaId);
+      return res.status(200).json("Entrada borrada correctamente!");
     }
   } catch (error) {
     return res.status(500).json(error);
@@ -118,27 +153,72 @@ export const getEntradaPaginations = async (req, res) => {
   }
 };
 
+export const getSearchConsultaInventario = async (req, res) => {
+  try {
+    const queryLimit = Number(req.query.limit) || 10,
+      querySkip = Number(req.query.skip) || 0;
+    const { searchInventario } = req.params;
+
+    const entradaSearch = await Inventario.find({
+      $or: [
+        { code: { $regex: ".*" + searchInventario + ".*", $options: "i" } },
+        { product: { $regex: ".*" + searchInventario + ".*", $options: "i" } },
+        { creado: { $regex: searchInventario, $options: "i" } },
+      ],
+    })
+      .skip(querySkip)
+      .limit(queryLimit);
+
+    const entradaCount = await Inventario.find({
+      $or: [
+        { code: { $regex: ".*" + searchInventario + ".*", $options: "i" } },
+        { product: { $regex: ".*" + searchInventario + ".*", $options: "i" } },
+        { creado: { $regex: searchInventario, $options: "i" } },
+      ],
+    });
+
+    let count = entradaCount.length;
+
+    return res.status(200).json({
+      content: entradaSearch,
+      total: count,
+    });
+  } catch (error) {
+    return res.status(500).send(error);
+  }
+};
+
 export const getSearchEntrada = async (req, res) => {
-    try {
-        const queryLimit = Number(req.query.limit) || 20,
-        querySkip = Number(req.query.skip) || 0;
-        const { search } = req.params;
+  try {
+    const queryLimit = Number(req.query.limit) || 10,
+      querySkip = Number(req.query.skip) || 0;
+    const { search } = req.params;
 
-        const entradaSearch = await Entrada.find({
-            $or: [
-                { code: { $regex: '.*' + search + '.*', $options: 'i' } },
-                { product: { $regex: '.*' + search + '.*', $options: 'i' } },
-                { creado: { $regex: search, $options: 'i'}}
-            ]
-        }).skip(querySkip).limit(queryLimit);
+    const entradaSearch = await Entrada.find({
+      $or: [
+        { code: { $regex: ".*" + search + ".*", $options: "i" } },
+        { product: { $regex: ".*" + search + ".*", $options: "i" } },
+        { creado: { $regex: search, $options: "i" } },
+      ],
+    })
+      .skip(querySkip)
+      .limit(queryLimit);
 
-        let count = await Entrada.count();
+    const entradaCount = await Entrada.find({
+      $or: [
+        { code: { $regex: ".*" + search + ".*", $options: "i" } },
+        { product: { $regex: ".*" + search + ".*", $options: "i" } },
+        { creado: { $regex: search, $options: "i" } },
+      ],
+    });
 
-        return res.status(200).json({
-            content: entradaSearch,
-            total: count
-        });
-    } catch (error) {
-        return res.status(500).json(error);
-    }
-}
+    let count = entradaCount.length;
+
+    return res.status(200).json({
+      content: entradaSearch,
+      total: count,
+    });
+  } catch (error) {
+    return res.status(500).json(error);
+  }
+};

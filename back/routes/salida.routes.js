@@ -15,6 +15,7 @@ router.post("/", [_authJwt.isModerator, _authJwt.verifyToken], salidaCtrl.create
 router.get("/", salidaCtrl.getSalidas);
 router.get("/pagination", salidaCtrl.getSalidasPaginations);
 router.get("/:search", salidaCtrl.getSearchSalida);
+router.get("/inventario/:searchInventario", salidaCtrl.getSearchConsultaInventario);
 router.get("/dateCurrent", salidaCtrl.getSearchDateCurrentSalidas);
 router.put("/:salidaId", [_authJwt.isModerator, _authJwt.verifyToken], salidaCtrl.updateSalidaById);
 router["delete"]("/:salidaId", [_authJwt.isModerator, _authJwt.verifyToken], salidaCtrl.deleteSalidaById);

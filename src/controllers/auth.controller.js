@@ -60,8 +60,6 @@ export const signin = async (req, res) => {
       expiresIn: 86400,
     });
 
-    console.log(req.body);
-
     return res.json({ 
       token, 
       username: req.body.username

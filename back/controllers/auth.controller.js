@@ -119,20 +119,19 @@ var signin = /*#__PURE__*/function () {
           }, _config.SECRET, {
             expiresIn: 86400
           });
-          console.log(req.body);
           return _context2.abrupt("return", res.json({
             token: token,
             username: req.body.username
           }));
-        case 16:
-          _context2.prev = 16;
+        case 15:
+          _context2.prev = 15;
           _context2.t0 = _context2["catch"](0);
           return _context2.abrupt("return", res.status(500).json(_context2.t0.message));
-        case 19:
+        case 18:
         case "end":
           return _context2.stop();
       }
-    }, _callee2, null, [[0, 16]]);
+    }, _callee2, null, [[0, 15]]);
   }));
   return function signin(_x3, _x4) {
     return _ref2.apply(this, arguments);

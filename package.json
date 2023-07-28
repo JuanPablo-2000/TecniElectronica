@@ -30,7 +30,7 @@
     "@babel/cli": "^7.21.5",
     "@babel/core": "^7.21.8",
     "@babel/node": "^7.20.7",
-    "@babel/preset-env": "^7.21.5",
+    "@babel/preset-env": "^7.22.5",
     "electron": "^14.2.9",
     "electron-builder": "^23.6.0",
     "nodemon": "^2.0.22"

@@ -4,6 +4,8 @@
 # Ignora la carpeta node_modules
 node_modules
 
+dist
+
 # Ignora todos los archivos de texto
 *.txt
 
